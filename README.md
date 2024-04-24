@@ -1,20 +1,16 @@
-# test commit2
+# CD with Jenkins, Nexus, Sonarqube and Elastic Beanstalk for deployment of application
+
+This is project 19.
+
+The branch ci-jenkins is just to retest the pipeline from project 8 and project 18
+Project 19 uses a new remote repo but is the same exact code for the CI pipeline.
+
+WIP. Need to finish this.
+
+
 
 # Prerequisites
-## test a push from VSCode to the ci-jenkins branch of fork vprofile-project-hkhcoder project
-## test push
-## test push
 
-## test push
-## test push from project 10 workspace folder
-# test ci-jenkins
-# test
-# test
-# disk was full causing failure to execute pipeline as build executors brought down due to disk full. Relieving disk space
-# Now try another commit ....
-# test
-# test
-# test
 - JDK 11 
 - Maven 3 
 - MySQL 8
