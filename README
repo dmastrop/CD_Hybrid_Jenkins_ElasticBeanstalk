@@ -1,0 +1,49 @@
+# CD with Jenkins, Nexus, Sonarqube and Elastic Beanstalk for deployment of application (project 19)
+
+This is project 19.
+
+# Set up a new local workspace and a new remote repository for project19 as this will diverge from project18 signficantly.
+
+The branch ci-jenkins in project 19 is just to retest the CI pipeline from project 8 and project 18
+
+Project 19 uses a new remote repo but is the same exact code for the CI pipeline.  Webhook for jenkins is added.
+
+The code is cloned from the project18 repo git clone https://github.com/dmastrop/CD_jenkins_ansible_nexus.git
+
+Only the main and ci-jenkins branches were checked out prior to resetting the origin in the local workspace
+
+ % git branch -a
+* ci-jenkins
+  main
+  remotes/origin/ci-jenkins
+  remotes/origin/main
+
+
+
+
+
+# Prerequisites
+
+- JDK 11 
+- Maven 3 
+- MySQL 8
+
+# Technologies 
+- Spring MVC
+- Spring Security
+- Spring Data JPA
+- Maven
+- JSP
+- Tomcat
+- MySQL
+- Memcached
+- Rabbitmq
+- ElasticSearch
+# Database
+Here,we used Mysql DB 
+sql dump file:
+- /src/main/resources/db_backup.sql
+- db_backup.sql file is a mysql dump file.we have to import this dump to mysql db server
+- > mysql -u <user_name> -p accounts < db_backup.sql
+
+
