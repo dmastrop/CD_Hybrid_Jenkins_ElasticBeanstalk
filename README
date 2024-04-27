@@ -18,7 +18,118 @@ Only the main and ci-jenkins branches were checked out prior to resetting the or
   remotes/origin/ci-jenkins
   remotes/origin/main
 
-# Create a new pipeline1 for CI for this project 19 on the jenkins server
+
+# Make sure that the ci-jenkins pipeline1 still works
+
+Since this is a new remote repo from project 8 and 18, create a new pipeline in Jenkins server. Make sure that this works. This will ensure that the infra (Nexus, Sonarqube and Jenkins) is working properly.
+
+
+
+
+
+# PREREQUISITES for CD pipelines 2 and 3 for deployment onto Elasticbeanstalk:
+
+## Copy the SSH keys from project18 and SSH into the Jenkins server and install aws cli
+sudo apt update
+sudo apt install awscli -y
+
+NOTE: this installs aws cli v1. On k8s environments this causes issues. Since this is not k8s, this will be ok.
+To install awsv2, awsv1 has to first be removed. Then install aws v2 with the following syntax as described in README of repository: git@github.com:dmastrop/terraform-project17-iac-vprofile.git
+
+To install aws v2 cli do it this way for fresh install of version 2: 
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" 
+unzip awscliv2.zip 
+sudo ./aws/install
+
+If aws v1 is installed, it must first be removed:
+sudo apt-get remove --auto-remove awscli
+
+Then install aws v2
+
+Then clear the bash cache to get the correct path instantiated in the terminal.
+
+Test with aws --version
+
+## Create a new IAM user aws-bean-s3-admin-keys that will be used in the Jenkinsfile script to deploy the latest artifact to ElasticBeanstalk deployment
+
+
+
+## create an S3 bucket (this can be left on AWS2 even after teardown)
+Jenkins has the latest .war artifact in ./target and this is copied by Jenkins into this s3 bucket. The artifact will then be uploaded to Elasticbeanstalk application by Jenkins and then will be deployed to the Elasticbeanstalk environment (stage or prod) from the appliation.
+
+
+
+
+## Create the Elasticbeanstalk application and sample environement with these settings (this should be deleted if performing a teardown of the project)"
+Webserver environment
+Application name vprofile-bean-app-project19
+Env name vprofile-bean-app-project19-env (this one will be used for staging; will create another env in same app for production)
+Platform managed platform
+Tomcat Tomcat 8.5 with corretto 11.  4.5.1
+Application code Sample application code for now
+Presets: Custom configuration
+Use the aws-elasticbeanstalk-service-role
+Use the aws-elasticbeanstalk-ec2-role
+Don’t select a custom VPC (it will use the default VPC)
+No subnets (they will be defined in default VPC)
+No RDS database
+Leave instances and container defaults
+No EC2 security groups
+Capacity Autoscaling group choose Loadbalancing
+2 instances min and 4 max
+Instance types only t2.micro
+Avaliablity zones any (default)
+Loadbalancer type Application type
+Dedicated
+Leave listener on 80 default (click the button)
+Leave processes on default (will change healthcheck to /login after initial sample comes up)
+Health reporting leave default enhanced
+Rolling updates: use rolling and 50% (for 2 instances)
+(Leave proxy server on nginx)
+
+
+
+# Create a new pipeline2 project19 on Jenkins for the stage CD
+This will use the cd-jenkins-beanstalk-stage-project19 branch
+The scripting is the following in the environment block
+
+        // Adding new environmental variables to deploy beanstalk application version of artifact upload to a specific environment in 
+        // the beanstalk application
+        ARTIFACT_NAME = "vprofile-v${BUILD_ID}.war"
+
+        //AWS_S3_BUCKET = 'vprocicdbean'
+        AWS_S3_BUCKET = 'vprofile-cd-bean-project19'
+
+        //AWS_EB_APP_NAME = 'vproapp'
+        AWS_EB_APP_NAME = 'vprofile-bean-app-project19'
+
+        //AWS_EB_ENVIRONMENT = 'Vproapp-env'
+        AWS_EB_ENVIRONMENT = 'vprofile-bean-app-project19-env'
+
+        AWS_EB_APP_VERSION = "${BUILD_ID}"
+        // just use the BUILD_ID from the ARTIFACT_NAME above
+
+And adding this stage after the Upload artifact to Nexus stage:
+
+        stage('Deploy to Stage Bean'){
+          steps {
+            withAWS(credentials: 'aws-bean-s3-admin-keys', region: 'us-east-1') {
+               sh 'aws s3 cp ./target/vprofile-v2.war s3://$AWS_S3_BUCKET/$ARTIFACT_NAME'
+               sh 'aws elasticbeanstalk create-application-version --application-name $AWS_EB_APP_NAME --version-label $AWS_EB_APP_VERSION --source-bundle S3Bucket=$AWS_S3_BUCKET,S3Key=$ARTIFACT_NAME'
+               sh 'aws elasticbeanstalk update-environment --application-name $AWS_EB_APP_NAME --environment-name $AWS_EB_ENVIRONMENT --version-label $AWS_EB_APP_VERSION'
+            }
+          }
+          // steps end block
+        }
+        // stage Deploy to Stage Bean end block
+
+
+
+
+
+# Create a new pipeline3 project19 on Jenkins for production CD
+This will use the cd-jenkins-beanstalk-prod-project19 branch
 
 
 
