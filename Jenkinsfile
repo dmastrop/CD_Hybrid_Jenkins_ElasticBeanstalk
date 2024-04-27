@@ -262,5 +262,6 @@ pipeline {
 
 //test
 // test from project19 ci-jenkins branch
+// test from project19 cd-jenkins-beanstalk-stage-projecct19 branch
 
 
