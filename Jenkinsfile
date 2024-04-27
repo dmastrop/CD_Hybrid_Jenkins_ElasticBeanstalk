@@ -263,5 +263,6 @@ pipeline {
 //test
 // test from project19 ci-jenkins branch
 // test from project19 cd-jenkins-beanstalk-stage-projecct19 branch
+// deploy version 2 of the artifact to the staging branch/pipeline2 of project19
 
 
