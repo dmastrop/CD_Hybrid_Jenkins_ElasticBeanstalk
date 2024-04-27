@@ -18,6 +18,9 @@ Only the main and ci-jenkins branches were checked out prior to resetting the or
   remotes/origin/ci-jenkins
   remotes/origin/main
 
+# Create a new pipeline1 for CI for this project 19 on the jenkins server
+
+
 
 
 

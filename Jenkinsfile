@@ -52,6 +52,21 @@ pipeline {
         // Manage Jenkins Tools: this references the scanner version, etc....
         SONARSCANNER = 'sonarscanner'
 
+        // Adding new environmental variables to deploy beanstalk application version of artifact upload to a specific environment in 
+        // the beanstalk application
+        ARTIFACT_NAME = "vprofile-v${BUILD_ID}.war"
+
+        //AWS_S3_BUCKET = 'vprocicdbean'
+        AWS_S3_BUCKET = 'vprofile-cd-bean-project19'
+
+        //AWS_EB_APP_NAME = 'vproapp'
+        AWS_EB_APP_NAME = 'vprofile-bean-app-project19'
+
+        //AWS_EB_ENVIRONMENT = 'Vproapp-env'
+        AWS_EB_ENVIRONMENT = 'vprofile-bean-app-project19-env'
+
+        AWS_EB_APP_VERSION = "${BUILD_ID}"
+        // just use the BUILD_ID from the ARTIFACT_NAME above
 
     }
 
@@ -184,8 +199,41 @@ pipeline {
         // stage UploadArtifact end block
 
 
+
+        // Add a new stage to incorporate the uploading and deployment of the artifact to beanstalk using the newly added
+        // environmental variables above
+        // credentials is the one saved to jenkins. This  must be the same name. This was created earlier in this project19
+        // aws-bean-s3-admin-keys has IAM permissions S3 Admin and Beanstalk Admin.
+        // region is us-east-1
+
+        // FIRST shell command: Artifact name will be based upon the BUILD_ID. Upload it to the project19 S3 bucket
+        // SECOND shell command: 
+        // Create a new application version and upload this artfact above  to beanstalk.  This will be at application level.
+        // The environment level below the application will have access to the artifact.
+        // There is a bug in AWS CLI console where if no arrtifact in application versions, the Upload button is greyed out
+        // The uploads can be done through the environment level in this case. 
+        // The command below will upload the artifact to the application level.
+        // THIRD shell command:
+        // This will deploy the application to the environment in the application.  The version label will be whatever AWS_EB_APP_VERSION label in the second command
+        // so that the right version is deployed.
+
+        stage('Deploy to Stage Bean'){
+          steps {
+            withAWS(credentials: 'aws-bean-s3-admin-keys', region: 'us-east-1') {
+               sh 'aws s3 cp ./target/vprofile-v2.war s3://$AWS_S3_BUCKET/$ARTIFACT_NAME'
+               sh 'aws elasticbeanstalk create-application-version --application-name $AWS_EB_APP_NAME --version-label $AWS_EB_APP_VERSION --source-bundle S3Bucket=$AWS_S3_BUCKET,S3Key=$ARTIFACT_NAME'
+               sh 'aws elasticbeanstalk update-environment --application-name $AWS_EB_APP_NAME --environment-name $AWS_EB_ENVIRONMENT --version-label $AWS_EB_APP_VERSION'
+            }
+          }
+          // steps end block
+        }
+        // stage Deploy to Stage Bean end block
+
+
     // stages block end
     }
+
+
 
 
     // post stage is inserted here after all of the stages block
