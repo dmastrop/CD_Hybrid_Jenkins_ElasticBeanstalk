@@ -61,7 +61,7 @@ Jenkins has the latest .war artifact in ./target and this is copied by Jenkins i
 
 
 
-## Create the Elasticbeanstalk application and sample environement with these settings (this should be deleted if performing a teardown of the project)"
+## Create the Elasticbeanstalk application and sample environement with these settings (this should be deleted if performing a teardown of the project):
 Webserver environment
 Application name vprofile-bean-app-project19
 Env name vprofile-bean-app-project19-env (this one will be used for staging; will create another env in same app for production)
