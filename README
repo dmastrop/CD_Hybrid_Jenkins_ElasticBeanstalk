@@ -59,8 +59,6 @@ Test with aws --version
 Jenkins has the latest .war artifact in ./target and this is copied by Jenkins into this s3 bucket. The artifact will then be uploaded to Elasticbeanstalk application by Jenkins and then will be deployed to the Elasticbeanstalk environment (stage or prod) from the appliation.
 
 
-
-
 ## Create the Elasticbeanstalk application and sample environement with these settings (this should be deleted if performing a teardown of the project):
 Webserver environment
 Application name vprofile-bean-app-project19
@@ -83,10 +81,25 @@ Avaliablity zones any (default)
 Loadbalancer type Application type
 Dedicated
 Leave listener on 80 default (click the button)
-Leave processes on default (will change healthcheck to /login after initial sample comes up)
+Leave processes on default (will change healthcheck to /login after initial sample comes up. See below ****)
 Health reporting leave default enhanced
 Rolling updates: use rolling and 50% (for 2 instances)
 (Leave proxy server on nginx)
+
+
+## ****prior to triggering the pipeline2(below) change the healthcheck path from / to /login on the loadbalancer for the elaticbeanstalk environment
+The path is the loadbalancer-url/login for the vprofile app, not loadbalancer-url/
+
+To edit the path of the healthcheck for the elasticbeanstalk environment do the following:
+Go into the environment
+On left side go into Configuration
+Edit "Instance Traffic and Scaling" to edit the loadbalancer
+Go down to Processes and Edit this
+Change the path of the health check from / to /login
+Apply the change at the bottom
+
+
+
 
 
 
