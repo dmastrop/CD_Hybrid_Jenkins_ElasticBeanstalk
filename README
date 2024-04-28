@@ -141,9 +141,74 @@ And adding this stage after the Upload artifact to Nexus stage:
 
 
 
+
+
+# Create another elasticbeanstalk environment for production in same exact way as staging was done above. This environment will be under the same elasticbeanstalk application vprofile-bean-app-project19
+The name of this production elasticbeanstalk environment is vprofile-bean-app-project19-env-prod
+Ensure that the healthcheck path is changed from / to /login as well.
+
+
+
 # Create a new pipeline3 project19 on Jenkins for production CD
 This will use the cd-jenkins-beanstalk-prod-project19 branch
 
+Changes to environmental variables:
+
+        // For this production pipeline we need to use the buildNumber as defined at the top of this Jenkinsfile. See the notes above.
+        // buildNumber will give us the BUILD_ID of the staging pipeline which is what we want.
+        ARTIFACT_NAME = "vprofile-v${buildNumber}.war"
+
+
+        //AWS_EB_ENVIRONMENT = 'Vproapp-env'
+        //AWS_EB_ENVIRONMENT = 'vprofile-bean-app-project19-env'
+        // this needs to be updated to point to the production elasticbeanstalk environment in this application
+        AWS_EB_ENVIRONMENT = 'vprofile-bean-app-project19-env-prod'
+
+
+        // AWS_EB_APP_VERSION = "${BUILD_ID}"
+        // just use the BUILD_ID from the ARTIFACT_NAME above
+        // For this production pipeline we need to use the buildNumber as defined at the top of this Jenkinfile. See notes above.
+        // buildNumber will give us the BUILD_ID of teh staging pipeline and this is what we want to deploy to the producton elasticbeanstalk environment.
+        // This number will show up in AWS web console for the production environment as the Running version.
+        AWS_EB_APP_VERSION = "${buildNumber}"
+
+
+Only one stage is required in the stages block now. Note that only the third shell command is required now as explained below:
+
+        // New stage to deploy the last successful buildNumber (see top of this file) from the staging pipeline to this production pipeline.
+        // This will deploy the same artifact version to the PROUDCTION elasticbeanstalk environment.
+        // Note that we do not need to upload the image to s3 bucket. It is already there from the staging pipeline
+        // Note that we do not need to create a new elasticbeanstalk Application version either. This is already tagged as such from the staging pipeline.
+        // The application is a superset of the elasticbeanstalk environment(s) under it.
+        // The only shell command that needs to be run is the last one to deploy the last succcessful staging artifact version from the staging pipeline to the 
+        // production elasticbeanstalk environment.
+        // The AWS_EB_ENVIRONMENT has been updated above accordingly to point to 'vprofile-bean-app-project19-env-prod'
+
+        stage('Deploy to Production Bean'){
+          steps {
+            withAWS(credentials: 'aws-bean-s3-admin-keys', region: 'us-east-1') {
+               //sh 'aws s3 cp ./target/vprofile-v2.war s3://$AWS_S3_BUCKET/$ARTIFACT_NAME'
+               //sh 'aws elasticbeanstalk create-application-version --application-name $AWS_EB_APP_NAME --version-label $AWS_EB_APP_VERSION --source-bundle S3Bucket=$AWS_S3_BUCKET,S3Key=$ARTIFACT_NAME'
+               sh 'aws elasticbeanstalk update-environment --application-name $AWS_EB_APP_NAME --environment-name $AWS_EB_ENVIRONMENT --version-label $AWS_EB_APP_VERSION'
+            }
+          }
+          // steps end block
+        }
+        // stage Deploy to Prouduction Bean end block
+
+
+
+Finally, update slack notification with the buildNumber as the Production build  number that is actually deployed.
+
+post {
+        always {
+            echo 'Slack Notifications.'
+            //slackSend channel: '#jenkinscicd2',
+            slackSend channel: '#cd-devops',
+                color: COLOR_MAP[currentBuild.currentResult],
+                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL} \n The buildNumber for PRODUCTION: ${env.buildNmber}"
+        }
+    }
 
 
 
