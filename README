@@ -57,12 +57,12 @@ Test with aws --version
 
 ## create an S3 bucket (this can be left on AWS2 even after teardown)
 Jenkins has the latest .war artifact in ./target and this is copied by Jenkins into this s3 bucket. The artifact will then be uploaded to Elasticbeanstalk application by Jenkins and then will be deployed to the Elasticbeanstalk environment (stage or prod) from the appliation.
+The s3 bucket is vprofile-cd-bean-project19
 
-
-## Create the Elasticbeanstalk application and sample environement with these settings (this should be deleted if performing a teardown of the project):
+## Create the Elasticbeanstalk application and sample environement(staging) with these settings (this should be deleted if performing a teardown of the project):
 Webserver environment
 Application name vprofile-bean-app-project19
-Env name vprofile-bean-app-project19-env (this one will be used for staging; will create another env in same app for production)
+Env name vprofile-bean-app-project19-env (this one will be used for staging; will create another env in same app for production;see below)
 Platform managed platform
 Tomcat Tomcat 8.5 with corretto 11.  4.5.1
 Application code Sample application code for now
@@ -87,23 +87,38 @@ Rolling updates: use rolling and 50% (for 2 instances)
 (Leave proxy server on nginx)
 
 
-## ****prior to triggering the pipeline2(below) change the healthcheck path from / to /login on the loadbalancer for the elaticbeanstalk environment
-The path is the loadbalancer-url/login for the vprofile app, not loadbalancer-url/
+## Create the Elasticbeanstalk application and production environement with these settings (this should be deleted if performing a teardown of the project):
+Webserver environment
+Application name vprofile-bean-app-project19
+Env name vprofile-bean-app-project19-env-prod 
+Platform managed platform
+Tomcat Tomcat 8.5 with corretto 11.  4.5.1
+Application code Sample application code for now
+Presets: Custom configuration
+Use the aws-elasticbeanstalk-service-role
+Use the aws-elasticbeanstalk-ec2-role
+Don’t select a custom VPC (it will use the default VPC)
+No subnets (they will be defined in default VPC)
+No RDS database
+Leave instances and container defaults
+No EC2 security groups
+Capacity Autoscaling group choose Loadbalancing
+2 instances min and 4 max
+Instance types only t2.micro
+Avaliablity zones any (default)
+Loadbalancer type Application type
+Dedicated
+Leave listener on 80 default (click the button)
+Leave processes on default (will change healthcheck to /login after initial sample comes up. See below ****)
+Health reporting leave default enhanced
+Rolling updates: use rolling and 50% (for 2 instances)
+(Leave proxy server on nginx)
 
-To edit the path of the healthcheck for the elasticbeanstalk environment do the following:
-Go into the environment
-On left side go into Configuration
-Edit "Instance Traffic and Scaling" to edit the loadbalancer
-Go down to Processes and Edit this
-Change the path of the health check from / to /login
-Apply the change at the bottom
 
 
 
 
-
-
-# Create a new pipeline2 project19 on Jenkins for the stage CD
+# Create a new pipeline2 (staging pipeline) project19 on Jenkins for the stage CD
 This will use the cd-jenkins-beanstalk-stage-project19 branch
 The scripting is the following in the environment block
 
@@ -137,15 +152,115 @@ And adding this stage after the Upload artifact to Nexus stage:
         }
         // stage Deploy to Stage Bean end block
 
+# ****prior to triggering the pipeline2 change the healthcheck path from / to /login on the loadbalancer for the elaticbeanstalk staging environment
+The path is the loadbalancer-url/login for the vprofile app, not loadbalancer-url/
+
+To edit the path of the healthcheck for the elasticbeanstalk environment do the following:
+Go into the environment
+On left side go into Configuration
+Edit "Instance Traffic and Scaling" to edit the loadbalancer
+Go down to Processes and Edit this
+Change the path of the health check from / to /login
+Apply the change at the bottom
 
 
 
 
 # Create a new pipeline3 project19 on Jenkins for production CD
 This will use the cd-jenkins-beanstalk-prod-project19 branch
+Four changes to the staging Jenkinsfile for production.
+
+
+## CHANGE1:
+def buildNumber = Jenkins.instance.getItem('vprofile-project19-CD-pipeline-cd-jenkins-beanstalk-stage-branch-2').lastSuccessfulBuild.number
+
+// This will get the last successful build number (BUILD_ID) from the stage pipeline-2 and use that as the production code to deploy to
+// the production Elasticbeanstalk environment 
+// The staging elasticbeanstalk env is Vprofile-bean-app-project19-env
+// The production elasticbeanstalk env is vprofile-bean-app-project19-env-prod
+// buildNumber is a variable that we will use below for the deployment to the production beanstalk environment.
+// NOTE: we cannot use the BUILD_ID here. This is a separate pipeline from the staging pipeline, and this BUILD_ID for this production Jenkinsfile
+// will not be the correct BUILD_ID
+// We want the BUILD_ID of the staging pipeline.
+// So the ARTIFACT_NAME env variable below needs to use buildNumber and not BUILD_ID
+// Likewise, AWS_EB_APP_VERSION needs to use this version as well. This is the version that will be used in the deployment to the production elasticbeanstalk environment
 
 
 
+
+## CHANGE2:
+Changes to environmental variables:
+
+        // For this production pipeline we need to use the buildNumber as defined at the top of this Jenkinsfile. See the notes above.
+        // buildNumber will give us the BUILD_ID of the staging pipeline which is what we want.
+        ARTIFACT_NAME = "vprofile-v${buildNumber}.war"
+
+
+        //AWS_EB_ENVIRONMENT = 'Vproapp-env'
+        //AWS_EB_ENVIRONMENT = 'vprofile-bean-app-project19-env'
+        // this needs to be updated to point to the production elasticbeanstalk environment in this application
+        AWS_EB_ENVIRONMENT = 'vprofile-bean-app-project19-env-prod'
+
+
+        // AWS_EB_APP_VERSION = "${BUILD_ID}"
+        // just use the BUILD_ID from the ARTIFACT_NAME above
+        // For this production pipeline we need to use the buildNumber as defined at the top of this Jenkinfile. See notes above.
+        // buildNumber will give us the BUILD_ID of teh staging pipeline and this is what we want to deploy to the producton elasticbeanstalk environment.
+        // This number will show up in AWS web console for the production environment as the Running version.
+        AWS_EB_APP_VERSION = "${buildNumber}"
+
+
+
+
+## CHANGE3:
+Only one stage is required in the stages block now. Note that only the third shell command is required now as explained below.  The rest of the stages in the Jenkinsfile can be commented out.
+
+        // New stage to deploy the last successful buildNumber (see top of this file) from the staging pipeline to this production pipeline.
+        // This will deploy the same artifact version to the PROUDCTION elasticbeanstalk environment.
+        // Note that we do not need to upload the image to s3 bucket. It is already there from the staging pipeline
+        // Note that we do not need to create a new elasticbeanstalk Application version either. This is already tagged as such from the staging pipeline.
+        // The application is a superset of the elasticbeanstalk environment(s) under it.
+        // The only shell command that needs to be run is the last one to deploy the last succcessful staging artifact version from the staging pipeline to the 
+        // production elasticbeanstalk environment.
+        // The AWS_EB_ENVIRONMENT has been updated above accordingly to point to 'vprofile-bean-app-project19-env-prod'
+
+        stage('Deploy to Production Bean'){
+          steps {
+            withAWS(credentials: 'aws-bean-s3-admin-keys', region: 'us-east-1') {
+               //sh 'aws s3 cp ./target/vprofile-v2.war s3://$AWS_S3_BUCKET/$ARTIFACT_NAME'
+               //sh 'aws elasticbeanstalk create-application-version --application-name $AWS_EB_APP_NAME --version-label $AWS_EB_APP_VERSION --source-bundle S3Bucket=$AWS_S3_BUCKET,S3Key=$ARTIFACT_NAME'
+               sh 'aws elasticbeanstalk update-environment --application-name $AWS_EB_APP_NAME --environment-name $AWS_EB_ENVIRONMENT --version-label $AWS_EB_APP_VERSION'
+            }
+          }
+          // steps end block
+        }
+        // stage Deploy to Prouduction Bean end block
+
+
+## CHANGE4:
+Finally, update slack notification with the buildNumber as the Production build  number that is actually deployed.
+
+post {
+        always {
+            echo 'Slack Notifications.'
+            //slackSend channel: '#jenkinscicd2',
+            slackSend channel: '#cd-devops',
+                color: COLOR_MAP[currentBuild.currentResult],
+                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL} \n The buildNumber for PRODUCTION: ${env.buildNmber}"
+        }
+    }
+
+
+# ****prior to triggering the pipeline3 change the healthcheck path from / to /login on the loadbalancer for the elaticbeanstalk prod environment
+The path is the loadbalancer-url/login for the vprofile app, not loadbalancer-url/
+
+To edit the path of the healthcheck for the elasticbeanstalk environment do the following:
+Go into the environment
+On left side go into Configuration
+Edit "Instance Traffic and Scaling" to edit the loadbalancer
+Go down to Processes and Edit this
+Change the path of the health check from / to /login
+Apply the change at the bottom
 
 
 # Prerequisites
@@ -171,8 +286,3 @@ sql dump file:
 - /src/main/resources/db_backup.sql
 - db_backup.sql file is a mysql dump file.we have to import this dump to mysql db server
 - > mysql -u <user_name> -p accounts < db_backup.sql
-
-
-## stage change
-
-
