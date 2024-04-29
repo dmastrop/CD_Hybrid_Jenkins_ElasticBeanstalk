@@ -57,12 +57,12 @@ Test with aws --version
 
 ## create an S3 bucket (this can be left on AWS2 even after teardown)
 Jenkins has the latest .war artifact in ./target and this is copied by Jenkins into this s3 bucket. The artifact will then be uploaded to Elasticbeanstalk application by Jenkins and then will be deployed to the Elasticbeanstalk environment (stage or prod) from the appliation.
+The s3 bucket is vprofile-cd-bean-project19
 
-
-## Create the Elasticbeanstalk application and sample environement with these settings (this should be deleted if performing a teardown of the project):
+## Create the Elasticbeanstalk application and sample environement(staging) with these settings (this should be deleted if performing a teardown of the project):
 Webserver environment
 Application name vprofile-bean-app-project19
-Env name vprofile-bean-app-project19-env (this one will be used for staging; will create another env in same app for production)
+Env name vprofile-bean-app-project19-env (this one will be used for staging; will create another env in same app for production;see below)
 Platform managed platform
 Tomcat Tomcat 8.5 with corretto 11.  4.5.1
 Application code Sample application code for now
@@ -87,23 +87,38 @@ Rolling updates: use rolling and 50% (for 2 instances)
 (Leave proxy server on nginx)
 
 
-## ****prior to triggering the pipeline2(below) change the healthcheck path from / to /login on the loadbalancer for the elaticbeanstalk environment
-The path is the loadbalancer-url/login for the vprofile app, not loadbalancer-url/
+## Create the Elasticbeanstalk application and production environement with these settings (this should be deleted if performing a teardown of the project):
+Webserver environment
+Application name vprofile-bean-app-project19
+Env name vprofile-bean-app-project19-env-prod 
+Platform managed platform
+Tomcat Tomcat 8.5 with corretto 11.  4.5.1
+Application code Sample application code for now
+Presets: Custom configuration
+Use the aws-elasticbeanstalk-service-role
+Use the aws-elasticbeanstalk-ec2-role
+Don’t select a custom VPC (it will use the default VPC)
+No subnets (they will be defined in default VPC)
+No RDS database
+Leave instances and container defaults
+No EC2 security groups
+Capacity Autoscaling group choose Loadbalancing
+2 instances min and 4 max
+Instance types only t2.micro
+Avaliablity zones any (default)
+Loadbalancer type Application type
+Dedicated
+Leave listener on 80 default (click the button)
+Leave processes on default (will change healthcheck to /login after initial sample comes up. See below ****)
+Health reporting leave default enhanced
+Rolling updates: use rolling and 50% (for 2 instances)
+(Leave proxy server on nginx)
 
-To edit the path of the healthcheck for the elasticbeanstalk environment do the following:
-Go into the environment
-On left side go into Configuration
-Edit "Instance Traffic and Scaling" to edit the loadbalancer
-Go down to Processes and Edit this
-Change the path of the health check from / to /login
-Apply the change at the bottom
 
 
 
 
-
-
-# Create a new pipeline2 project19 on Jenkins for the stage CD
+# Create a new pipeline2 (staging pipeline) project19 on Jenkins for the stage CD
 This will use the cd-jenkins-beanstalk-stage-project19 branch
 The scripting is the following in the environment block
 
@@ -137,15 +152,17 @@ And adding this stage after the Upload artifact to Nexus stage:
         }
         // stage Deploy to Stage Bean end block
 
+# ****prior to triggering the pipeline2 change the healthcheck path from / to /login on the loadbalancer for the elaticbeanstalk staging environment
+The path is the loadbalancer-url/login for the vprofile app, not loadbalancer-url/
 
+To edit the path of the healthcheck for the elasticbeanstalk environment do the following:
+Go into the environment
+On left side go into Configuration
+Edit "Instance Traffic and Scaling" to edit the loadbalancer
+Go down to Processes and Edit this
+Change the path of the health check from / to /login
+Apply the change at the bottom
 
-
-
-
-
-# Create another elasticbeanstalk environment for production in same exact way as staging was done above. This environment will be under the same elasticbeanstalk application vprofile-bean-app-project19
-The name of this production elasticbeanstalk environment is vprofile-bean-app-project19-env-prod
-Ensure that the healthcheck path is changed from / to /login as well.
 
 
 
@@ -154,8 +171,7 @@ This will use the cd-jenkins-beanstalk-prod-project19 branch
 Four changes to the staging Jenkinsfile for production.
 
 
-
-CHANGE1:
+## CHANGE1:
 def buildNumber = Jenkins.instance.getItem('vprofile-project19-CD-pipeline-cd-jenkins-beanstalk-stage-branch-2').lastSuccessfulBuild.number
 
 // This will get the last successful build number (BUILD_ID) from the stage pipeline-2 and use that as the production code to deploy to
@@ -172,7 +188,7 @@ def buildNumber = Jenkins.instance.getItem('vprofile-project19-CD-pipeline-cd-je
 
 
 
-CHANGE2:
+## CHANGE2:
 Changes to environmental variables:
 
         // For this production pipeline we need to use the buildNumber as defined at the top of this Jenkinsfile. See the notes above.
@@ -196,7 +212,7 @@ Changes to environmental variables:
 
 
 
-CHANGE3:
+## CHANGE3:
 Only one stage is required in the stages block now. Note that only the third shell command is required now as explained below.  The rest of the stages in the Jenkinsfile can be commented out.
 
         // New stage to deploy the last successful buildNumber (see top of this file) from the staging pipeline to this production pipeline.
@@ -221,7 +237,7 @@ Only one stage is required in the stages block now. Note that only the third she
         // stage Deploy to Prouduction Bean end block
 
 
-CHANGE4:
+## CHANGE4:
 Finally, update slack notification with the buildNumber as the Production build  number that is actually deployed.
 
 post {
@@ -235,8 +251,17 @@ post {
     }
 
 
+# ****prior to triggering the pipeline3 change the healthcheck path from / to /login on the loadbalancer for the elaticbeanstalk prod environment
+The path is the loadbalancer-url/login for the vprofile app, not loadbalancer-url/
 
-##
+To edit the path of the healthcheck for the elasticbeanstalk environment do the following:
+Go into the environment
+On left side go into Configuration
+Edit "Instance Traffic and Scaling" to edit the loadbalancer
+Go down to Processes and Edit this
+Change the path of the health check from / to /login
+Apply the change at the bottom
+
 
 # Prerequisites
 
@@ -261,8 +286,3 @@ sql dump file:
 - /src/main/resources/db_backup.sql
 - db_backup.sql file is a mysql dump file.we have to import this dump to mysql db server
 - > mysql -u <user_name> -p accounts < db_backup.sql
-
-
-## stage change
-
-
