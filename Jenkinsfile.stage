@@ -266,4 +266,5 @@ pipeline {
 // deploy version 2 of the artifact to the staging branch/pipeline2 of project19
 //add to Jenkinsfile.stage and merge to production
 // retest
+// test
 
