@@ -205,7 +205,7 @@ pipeline {
 
             // Using a new workspace during testing for slack issue called devops2-co
             // channels are #devop23 for project18 and #devop23-project19 for this project19
-            slackSend channel: #devop23-project19,
+            slackSend channel: '#devop23-project19',
                 color: COLOR_MAP[currentBuild.currentResult],
                 message: "*${currentBuild.currentResult}:* Pipeline Job: ${env.JOB_NAME} Pipeline Build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
         }
