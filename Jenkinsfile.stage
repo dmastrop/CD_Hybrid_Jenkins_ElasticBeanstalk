@@ -245,13 +245,18 @@ pipeline {
     // COLOR_MAP is defined at the top of this Jenkinsfile.  This will allow slack message to color green the SUCCESS
     // .... and color RED the FAILURE in the messages it sends out.
     // message is the message slack will send.
-    post {
+
+post {
         always {
             echo 'Slack Notifications.'
             //slackSend channel: '#jenkinscicd2',
-            slackSend channel: '#cd-devops',
+            //slackSend channel: '#cd-devops',
+
+            // Using a new workspace during testing for slack issue called devops2-co
+            // channels are #devop23 for project18 and #devop23-project19 for this project19
+            slackSend channel: '#devop23-project19',
                 color: COLOR_MAP[currentBuild.currentResult],
-                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
+                message: "*${currentBuild.currentResult}:* Pipeline Job: ${env.JOB_NAME} Pipeline Build: ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
         }
     }
 
