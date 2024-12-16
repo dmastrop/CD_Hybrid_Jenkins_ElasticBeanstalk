@@ -253,21 +253,6 @@ pipeline {
         }
 
 
-        // notify gitlab which is the trigger to jenkins. Note Jenkins has plugin to communicate to gitlab
-        // and this is tested and installed
-        // for gitlab to jenkins either use URL and credentials or webhook. I will use URL and credentials.
-        // Jenkins server has Security group open to 8080 from any source. Since gitlab is a container on VPS
-        // it will be sourced from the VPS public ip address.
-        // NOTE: for jenkins to gitlab the traefik reverse proxy on VPS had to add the ip address of the jenkins 
-        // server to the whitelist. The connection has been tested.
-        stage('Jenkins to gitlab notification of results') {
-          steps {
-             echo 'Notify GitLab'
-             updateGitlabCommitStatus name: 'build', state: 'pending'
-             updateGitlabCommitStatus name: 'build', state: 'success'
-          }
-        }
-
 
 
     // stages block end
